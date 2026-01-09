@@ -1,7 +1,7 @@
 package model
 
 type Pokemon struct {
-	ID                     string               `json:"id"`
+	ID                     int                  `json:"id"`
 	Name                   string               `json:"name"`
 	BaseExperience         int                  `json:"base_experience"`
 	Height                 int                  `json:"height"`
@@ -29,19 +29,19 @@ type NamedResource struct {
 }
 
 type PokemonAbility struct {
-	Slot      int           `json:"slot"`
-	Is_hidden bool          `json:"is_hidden"`
-	Ability   NamedResource `json:"ability"`
+	Slot     int           `json:"slot"`
+	IsHidden bool          `json:"is_hidden"`
+	Ability  NamedResource `json:"ability"`
 }
 
 type VersionGameIndex struct {
-	Game_index uint16        `json:"game_index"`
-	Version    NamedResource `json:"version"`
+	GameIndex uint16        `json:"game_index"`
+	Version   NamedResource `json:"version"`
 }
 
 type HeldItem struct {
-	Item           NamedResource          `json:"item"`
-	VersionDetails PokemonHeldItemVersion `json:"version_details"`
+	Item           NamedResource            `json:"item"`
+	VersionDetails []PokemonHeldItemVersion `json:"version_details"`
 }
 
 type Item struct {
@@ -55,12 +55,12 @@ type PokemonHeldItemVersion struct {
 }
 
 type PokemonMove struct {
-	Move                NamedResource      `json:"move"`
-	VersionGroupDetails PokemonMoveVersion `json:"version_group_details"`
+	Move                NamedResource        `json:"move"`
+	VersionGroupDetails []PokemonMoveVersion `json:"version_group_details"`
 }
 
 type PokemonMoveVersion struct {
-	LevelLearnedAt  uint16        `json:"level_learned_at"`
+	LevelLearnedAt  int           `json:"level_learned_at"`
 	VersionGroup    NamedResource `json:"version_group"`
 	MoveLearnMethod NamedResource `json:"move_learn_method"`
 	Order           int           `json:"order"`
@@ -72,7 +72,7 @@ type PokemonTypePast struct {
 }
 
 type PokemonType struct {
-	Slot int           `json:"integer"`
+	Slot int           `json:"slot"`
 	Type NamedResource `json:"type"`
 }
 
@@ -82,7 +82,7 @@ type PokemonAbilityPast struct {
 }
 
 type PokemonSprites struct {
-	FrontDefault     string `json:"fromt_default"`
+	FrontDefault     string `json:"front_default"`
 	FrontShiny       string `json:"front_shiny"`
 	FrontFemale      string `json:"front_female"`
 	FrontFemaleShiny string `json:"front_female_shiny"`
