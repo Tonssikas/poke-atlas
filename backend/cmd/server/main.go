@@ -1,19 +1,41 @@
 package main
 
 import (
-	"context"
 	"net/http"
+	"poke-atlas/web-service/internal/handlers"
 	"poke-atlas/web-service/internal/pokeapi"
 	"poke-atlas/web-service/internal/repository"
+	"poke-atlas/web-service/internal/store"
+
+	"fmt"
+	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 
-	repository := repository.NewRepository(pokeapi.NewPokeAPIClient(http.DefaultClient))
+	err := godotenv.Load()
+
+	if err != nil {
+		log.Println("Error loading .env file, using default values")
+	}
+
+	// Initialize dependencies
+	pokeAPIClient := pokeapi.NewPokeAPIClient(http.DefaultClient)
+	database := store.CreateSqliteDatabase()
+	defer database.Close()
+
+	if err := database.InitDB(); err != nil {
+		log.Fatal("Failed to initialize database:", err)
+	}
+	repository := repository.NewRepository(pokeAPIClient, database)
+	handler := handlers.NewHandler(repository)
 
 	router := gin.Default()
+	router.SetTrustedProxies(nil)
 
 	router.GET("/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -21,14 +43,7 @@ func main() {
 		})
 	})
 
-	router.GET("/poketest", func(c *gin.Context) {
-		pokemon, err := repository.GetPokemon(context.Background(), "pikachu")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, pokemon)
-	})
+	router.GET("/pokemon/:name", handler.GetPokemonHandler)
 
-	router.Run("localhost:8080")
+	router.Run(fmt.Sprintf("localhost:%s", os.Getenv("PORT")))
 }

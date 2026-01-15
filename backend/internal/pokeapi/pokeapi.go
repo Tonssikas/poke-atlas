@@ -39,6 +39,12 @@ func (c *pokeAPIClient) GetPokemon(ctx context.Context, name string) (model.Poke
 	}
 
 	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(response.Body)
+		return model.Pokemon{}, fmt.Errorf("PokeAPI returned status %d: %s", response.StatusCode, string(body))
+	}
+
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		fmt.Print(err.Error())
