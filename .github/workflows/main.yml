@@ -13,8 +13,8 @@ jobs:
         with:
           go-version: '1.25.x'
       - name: install depencencies
-        run: go get .
+        run: cd ./backend && go get .
       - name: Build
         run: go build -v ./...
       - name: Test with go CLI
-        run: go test
+        run: go test ./...
