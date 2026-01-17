@@ -49,5 +49,5 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	router.Run(fmt.Sprintf("localhost:%s", port))
+	router.Run(fmt.Sprintf(":%s", port))
 }
