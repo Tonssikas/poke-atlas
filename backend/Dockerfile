@@ -2,8 +2,12 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Install SQLite libraries if needed
-RUN apt-get update && apt-get install -y sqlite3 libsqlite3-0
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    sqlite3 \
+    libsqlite3-0 \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY ./main .
 COPY ./.prod.env ./.env
