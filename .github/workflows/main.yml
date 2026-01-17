@@ -3,7 +3,7 @@ name: Go
 on: [push]
 
 jobs:
-  build:
+  test:
     runs-on: self-hosted
     defaults:
       run:
@@ -14,9 +14,80 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with: 
-          go-version: '1.25.x'
+          go-version: '1.25.5'
           cache-dependency-path: ./backend/go.sum
-      - name: Build
-        run: go build -v ./...
-      - name: Test with go CLI
+      - name: Test backend
         run: go test ./...
+  
+  build:
+    runs-on: self-hosted
+    needs: test
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup go environment
+        uses: actions/setup-go@v5
+        with:
+            go-version: '1.25.5'
+            cache-dependency-path: ./backend/go.sum
+      - name: build backend
+        run: go build -v ./...
+
+  dockerize:
+    runs-on: self-hosted
+    needs: build
+    outputs:
+      tag: ${{ steps.image_tag.outputs.tag }}
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate image tag
+        id: image_tag
+        run: |
+          TAG=${GITHUB_REF_NAME//\//-}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: install depencencies
+        run: apt update && apt install -y docker
+      
+      - name: Build docker image
+        run: docker build -t ghcr.io/${{ github.repository_owner }}/poke-atlas-backend:${{ steps.image_tag.outputs.tag }} .
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.TOKEN_GITHUB }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+      
+      - name: Push image
+        run: docker push ghcr.io/${{ github.repository_owner }}/poke-atlas-backend:${{ steps.image_tag.outputs.tag }}
+
+
+  deploy:
+    runs-on: self-hosted
+    environment: production
+    needs: dockerize
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Deploy
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_KEY_LOCAL }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST_ADDRESS }}
+        run: |
+          apt install -y docker docker-compose-plugin
+          mkdir -p ~/.ssh && (umask 077 ; echo "${SSH_KEY}" > ~/.ssh/id_rsa)
+          echo -e "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+          mkdir deploy && cp docker-compose.yml ./deploy
+          scp -r deploy root@${DEPLOY_HOST}:~/
+          ssh root@${DEPLOY_HOST} << EOF
+          set -e
+          cd ~/deploy
+          echo "${{ secrets.TOKEN_GITHUB }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+          export REPO=${{ github.repository }}
+          export IMAGE_TAG=${{ needs.dockerize.outputs.tag }}
+          docker compose pull
+          docker compose up -d
+          EOF
