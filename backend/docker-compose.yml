@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: ghcr.io/${REPO}/poke-atlas-backend:${IMAGE_TAG}
+    ports: 
+      - "80:8080"
