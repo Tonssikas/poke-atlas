@@ -45,5 +45,9 @@ func main() {
 
 	router.GET("/pokemon/:name", handler.GetPokemonHandler)
 
-	router.Run(fmt.Sprintf("localhost:%s", os.Getenv("PORT")))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	router.Run(fmt.Sprintf("localhost:%s", port))
 }
