@@ -5,14 +5,16 @@ on: [push]
 jobs:
   test:
     runs-on: self-hosted
+    permissions:
+      contents: read 
     defaults:
       run:
         working-directory:  ./backend
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with: 
           go-version: '1.25.5'
           cache-dependency-path: ./backend/go.sum
@@ -22,13 +24,15 @@ jobs:
   build:
     runs-on: self-hosted
     needs: test
+    permissions:
+      contents: read 
     defaults:
       run:
         working-directory: ./backend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup go environment
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
             go-version: '1.25.5'
             cache-dependency-path: ./backend/go.sum
@@ -45,35 +49,45 @@ jobs:
   dockerize:
     runs-on: self-hosted
     needs: build
+    permissions:
+      contents: read
+      packages: write
     outputs:
-      tag: ${{ steps.image_tag.outputs.tag }}
-      repo: ${{ steps.image_tag.outputs.repo}}
+      tag: ${{ steps.meta.outputs.version }}
     defaults:
       run:
         working-directory: ./backend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Download artifact
         uses: actions/download-artifact@v5
         with:
           name: main-executable
           path: ./backend
-      - name: Generate image tag
-        id: image_tag
-        run: |
-          TAG=${GITHUB_REF_NAME//\//-}
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "repo=$REPO" >> $GITHUB_OUTPUT
-      
-      - name: Build docker image
-        run: docker build -t ghcr.io/${{ steps.image_tag.outputs.repo }}/poke-atlas-backend:${{ steps.image_tag.outputs.tag }} .
+      - name: Generate metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/poke-atlas-backend
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=sha
 
       - name: Login to GHCR
-        run: echo "${{ secrets.TOKEN_GITHUB }}" | docker login ghcr.io -u ${{ steps.image_tag.outputs.repo }} --password-stdin
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.TOKEN_GITHUB }}
       
-      - name: Push image
-        run: docker push ghcr.io/${{ steps.image_tag.outputs.repo }}/poke-atlas-backend:${{ steps.image_tag.outputs.tag }}
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
 
   deploy:
@@ -84,6 +98,8 @@ jobs:
       run:
         working-directory: ./backend
     steps:
+      - uses: actions/checkout@v6
+      
       - name: Deploy
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST_ADDRESS }}
@@ -93,8 +109,8 @@ jobs:
           ssh root@${DEPLOY_HOST} << EOF
           set -e
           cd ~/deploy
-          echo "${{ secrets.TOKEN_GITHUB }}" | docker login ghcr.io -u ${{ needs.dockerize.outputs.repo }} --password-stdin
-          export REPO=${{ needs.dockerize.outputs.repo }}
+          echo "${{ secrets.TOKEN_GITHUB }}" | docker login ghcr.io -u ${{ github.repository_owner}} --password-stdin
+          export USER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           export IMAGE_TAG=${{ needs.dockerize.outputs.tag }}
           docker compose pull
           docker compose up -d
