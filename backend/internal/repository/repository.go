@@ -10,7 +10,7 @@ import (
 )
 
 type Repository interface {
-	GetPokemon(ctx context.Context, name string) (model.Pokemon, error)
+	GetPokemon(ctx context.Context, name string) (model.Pokemon_summary, error)
 }
 
 type repository struct {
@@ -27,19 +27,35 @@ func NewRepository(pokeAPIClient pokeapi.PokeAPIClient, db store.Database) Repos
 	return newRepository
 }
 
-func (r *repository) GetPokemon(ctx context.Context, name string) (model.Pokemon, error) {
+func (r *repository) GetPokemon(ctx context.Context, name string) (model.Pokemon_summary, error) {
 
 	// Check database first
 	pokemon, err := r.database.GetPokemon(ctx, name)
-
 	if err == nil {
 		log.Printf("Pokemon %s found in the database\n", name)
-		return pokemon, err
+		return pokemon, nil
 	}
 
 	// If not found in local database, fetch from PokeAPI
+	response, err := r.fetchFromPokeAPI(ctx, name)
+	if err != nil {
+		return model.Pokemon_summary{}, err
+	}
+
+	pokemon = model.Pokemon_summary{
+		ID:     response.ID,
+		Name:   response.Name,
+		Weight: response.Weight,
+		Height: response.Height,
+	}
+
+	return pokemon, nil
+}
+
+func (r *repository) fetchFromPokeAPI(ctx context.Context, name string) (model.Pokemon, error) {
+
 	log.Println(fmt.Println("Fetching from api..."))
-	pokemon, err = r.pokeAPIClient.GetPokemon(ctx, name)
+	pokemon, err := r.pokeAPIClient.GetPokemon(ctx, name)
 
 	if err != nil {
 		return model.Pokemon{}, err
