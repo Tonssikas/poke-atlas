@@ -149,6 +149,37 @@ func (s *sqliteDatabase) GetPokemon(ctx context.Context, name string) (model.Pok
 	return pokemon, nil
 }
 
+func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int) ([]model.Pokemon_summary, error) {
+	limit := 20
+	query := `SELECT id, name, weight, height 
+            FROM pokemons 
+            ORDER BY id 
+            LIMIT ? OFFSET ?`
+
+	rows, err := s.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var pokemons []model.Pokemon_summary
+
+	for rows.Next() {
+		var pokemon model.Pokemon_summary
+		err := rows.Scan(&pokemon.ID, &pokemon.Name, &pokemon.Weight, &pokemon.Height)
+		if err != nil {
+			return nil, err
+		}
+		pokemons = append(pokemons, pokemon)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return pokemons, nil
+}
+
 func (s *sqliteDatabase) InitDB() error {
 	query := `
 	PRAGMA foreign_keys = ON;
