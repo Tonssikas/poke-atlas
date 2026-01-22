@@ -1,26 +1,30 @@
 <script lang="ts">
 	import Header from './Header.svelte';
+	import Navigation from '../lib/components/Navigation.svelte';
 	import './layout.css';
 
 	let { children } = $props();
 </script>
 
-<div class="app">
-	<Header />
-	<main>{@render children()}</main>
-	<footer>
-		<p>
-			visit
-			<a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a>
-			to learn about SvelteKit
-		</p>
-	</footer>
+<div class="layout">
+	<Navigation />
+
+	<div class="main-column">
+		<Header />
+	
+		<main>{@render children()}</main>
+		<footer>
+			<p>
+				Poke-atlas is work in progress
+			</p>
+		</footer>
+	</div>
 </div>
 
 <style>
-	.app {
-		display: flex;
-		flex-direction: column;
+	.layout {
+		display: grid;
+		grid-template-columns: auto 1fr;
 		min-height: 100vh;
 	}
 
@@ -29,10 +33,14 @@
 		display: flex;
 		flex-direction: column;
 		padding: 1rem;
-		width: 100%;
-		max-width: 64rem;
-		margin: 0 auto;
 		box-sizing: border-box;
+		overflow: auto;
+	}
+
+	.main-column {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
 	}
 
 	footer {
@@ -41,10 +49,6 @@
 		justify-content: center;
 		align-items: center;
 		padding: 12px;
-	}
-
-	footer a {
-		font-weight: bold;
 	}
 
 	@media (min-width: 480px) {
