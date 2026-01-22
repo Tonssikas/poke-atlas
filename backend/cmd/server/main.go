@@ -45,6 +45,8 @@ func main() {
 
 	router.GET("/pokemon/:name", handler.GetPokemonHandler)
 
+	router.GET("/pokemons/:offset", handler.GetPokemonsHandler)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
