@@ -72,7 +72,7 @@ func (r *repository) GetPokemons(ctx context.Context, offset int) ([]model.Pokem
 	}
 
 	// Fetch from pokeapi
-	log.Println(fmt.Println("Fetching from api..."))
+	log.Println("Fetching from api...")
 	response, err := r.pokeAPIClient.GetPokemons(ctx, offset)
 	if err != nil {
 		log.Println("Failed to fetch pokemons from api", err.Error())
