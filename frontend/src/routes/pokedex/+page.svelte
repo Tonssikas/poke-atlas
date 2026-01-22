@@ -1,24 +1,27 @@
 <script lang="ts">
-	import Counter from './Counter.svelte';
+    import Card from '$lib/components/Pokedex-card.svelte'
+
+    let { data } = $props();
 </script>
 
 <svelte:head>
 	<title>Poke-atlas</title>
-	<meta name="description" content="Poke-atlas web app" />
+	<meta name="description" content="Pokedex" />
 </svelte:head>
 
 <section>
 	<h1>
-		
-
-		Welcome to <br/> Poke-atlas!
+		Pokedex
 	</h1>
 
 	<h2>
-		A pokemon encyclopedia app
+		A list of pokemons
 	</h2>
 
-	<Counter />
+    {#each data.pokemon as pokemon}
+        <Card {pokemon} />
+    {/each}
+
 </section>
 
 <style>
