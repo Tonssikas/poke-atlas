@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"poke-atlas/web-service/internal/model"
 	"poke-atlas/web-service/internal/pokeapi"
 	"poke-atlas/web-service/internal/store"
+	"sort"
 )
 
 type Repository interface {
@@ -66,7 +66,7 @@ func (r *repository) GetPokemons(ctx context.Context, offset int) ([]model.Pokem
 
 	// Check database first
 	pokemons, err := r.database.GetPokemons(ctx, offset)
-	if (err == nil) && (len(pokemons) > 0) && (pokemons[len(pokemons)-1].ID == offset+20) {
+	if (err == nil) && (len(pokemons) > 0) {
 		log.Println("Pokemons found in database")
 		return pokemons, nil
 	}
@@ -96,6 +96,10 @@ func (r *repository) GetPokemons(ctx context.Context, offset int) ([]model.Pokem
 			Height: p.Height,
 		}
 	}
+	// Sort pokemons fetched from API by ID
+	sort.Slice(pokemons, func(i int, j int) bool {
+		return pokemons[i].ID < pokemons[j].ID
+	})
 
 	return pokemons, nil
 }

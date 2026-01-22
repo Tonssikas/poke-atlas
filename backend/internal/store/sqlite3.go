@@ -151,18 +151,19 @@ func (s *sqliteDatabase) GetPokemon(ctx context.Context, name string) (model.Pok
 
 func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int) ([]model.Pokemon_summary, error) {
 	limit := 20
-	query := `SELECT id, name, weight, height 
-            FROM pokemons 
-            ORDER BY id 
-            LIMIT ? OFFSET ?`
+	query := `SELECT id, name, weight, height
+            FROM pokemons
+			WHERE id > ? AND id <= ?
+            ORDER BY id`
 
-	rows, err := s.db.QueryContext(ctx, query, limit, offset)
+	rows, err := s.db.QueryContext(ctx, query, offset, offset+limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	var pokemons []model.Pokemon_summary
+	expectedID := offset + 1
 
 	for rows.Next() {
 		var pokemon model.Pokemon_summary
@@ -170,7 +171,15 @@ func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int) ([]model.P
 		if err != nil {
 			return nil, err
 		}
+		// Check for gap in the ID sequence
+		// This logic breaks when we hit regional / mega forms at some point after 1000, ID jumps up to 10000
+		if pokemon.ID != expectedID {
+			// Gap detected - return empty to trigger API fetch
+			return []model.Pokemon_summary{}, nil
+		}
+
 		pokemons = append(pokemons, pokemon)
+		expectedID++
 	}
 
 	if err = rows.Err(); err != nil {
