@@ -4,7 +4,7 @@
 
 @import '@skeletonlabs/skeleton'; 
 @import '@skeletonlabs/skeleton-svelte'; 
-@import '@skeletonlabs/skeleton/themes/cerberus';
+@import '../poke-atlas-default';
 
 :root {
 	--font-body:

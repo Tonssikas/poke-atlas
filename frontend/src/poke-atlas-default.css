@@ -1,0 +1,119 @@
+[data-theme='poke-atlas-default'] {
+  --text-scaling: 1.067;
+  --base-font-color: var(--color-primary-800);
+  --base-font-color-dark: var(--color-primary-600);
+  --base-font-family: system-ui, sans-serif;
+  --base-font-size: inherit;
+  --base-line-height: inherit;
+  --base-font-weight: normal;
+  --base-font-style: normal;
+  --base-letter-spacing: 0em;
+  --heading-font-color: inherit;
+  --heading-font-color-dark: inherit;
+  --heading-font-family: inherit;
+  --heading-font-weight: bold;
+  --heading-font-style: normal;
+  --heading-letter-spacing: inherit;
+  --anchor-font-color: var(--color-primary-500);
+  --anchor-font-color-dark: var(--color-primary-500);
+  --anchor-font-family: inherit;
+  --anchor-font-size: inherit;
+  --anchor-line-height: inherit;
+  --anchor-font-weight: inherit;
+  --anchor-font-style: inherit;
+  --anchor-letter-spacing: inherit;
+  --anchor-text-decoration: none;
+  --anchor-text-decoration-hover: underline;
+  --anchor-text-decoration-active: none;
+  --anchor-text-decoration-focus: none;
+  --spacing: 0.25rem;
+  --radius-base: 0.375rem;
+  --radius-container: 0.75rem;
+  --default-border-width: 2px;
+  --default-divide-width: 4px;
+  --default-ring-width: 2px;
+
+  /* Surface / Background */
+  --color-surface-50: #f5f5f5;
+  --color-surface-100: #e0e0e0;
+  --color-surface-200: #d1d1d1;
+  --color-surface-300: #c2c2c2;
+  --color-surface-400: #b3b3b3;
+  --color-surface-500: #a5a5a5;
+  --color-surface-600: #8c8c8c;
+  --color-surface-700: #737373;
+  --color-surface-800: #5a5a5a;
+  --color-surface-900: #404040;
+  --color-surface-950: #2b2b2b;
+
+  /* Primary: Pokéball Red */
+  --color-primary-50: #ffe5e5;
+  --color-primary-100: #ffb3b3;
+  --color-primary-200: #ff8080;
+  --color-primary-300: #ff4d4d;
+  --color-primary-400: #ff1a1a;
+  --color-primary-500: #ee0000;
+  --color-primary-600: #d40000;
+  --color-primary-700: #b70000;
+  --color-primary-800: #900000;
+  --color-primary-900: #700000;
+  --color-primary-950: #550000;
+
+  /* Secondary: Pokédex Blue */
+  --color-secondary-50: #e6f0ff;
+  --color-secondary-100: #b3d1ff;
+  --color-secondary-200: #80b2ff;
+  --color-secondary-300: #4d93ff;
+  --color-secondary-400: #1a74ff;
+  --color-secondary-500: #0056cc;
+  --color-secondary-600: #0049a3;
+  --color-secondary-700: #003d7a;
+  --color-secondary-800: #002f52;
+  --color-secondary-900: #001f2b;
+
+  /* Tertiary: Yellow / Neutral */
+  --color-tertiary-50: #fff9e6;
+  --color-tertiary-100: #fff2b3;
+  --color-tertiary-200: #ffeb80;
+  --color-tertiary-300: #ffe44d;
+  --color-tertiary-400: #ffdd1a;
+  --color-tertiary-500: #f5c200;
+  --color-tertiary-600: #cca100;
+  --color-tertiary-700: #997f00;
+  --color-tertiary-800: #665c00;
+  --color-tertiary-900: #332e00;
+
+  /* Status colors */
+  --color-success-50: #e6f9e6;
+  --color-success-100: #b3f0b3;
+  --color-success-200: #80e680;
+  --color-success-300: #4ddc4d;
+  --color-success-400: #1ad21a;
+  --color-success-500: #00b500;
+  --color-success-600: #009800;
+  --color-success-700: #007a00;
+  --color-success-800: #005c00;
+  --color-success-900: #003d00;
+
+  --color-warning-50: #fff9e6;
+  --color-warning-100: #fff2b3;
+  --color-warning-200: #ffeb80;
+  --color-warning-300: #ffe44d;
+  --color-warning-400: #ffdd1a;
+  --color-warning-500: #f5c200;
+  --color-warning-600: #cca100;
+  --color-warning-700: #997f00;
+  --color-warning-800: #665c00;
+  --color-warning-900: #332e00;
+
+  --color-error-50: #ffe6e6;
+  --color-error-100: #ffb3b3;
+  --color-error-200: #ff8080;
+  --color-error-300: #ff4d4d;
+  --color-error-400: #ff1a1a;
+  --color-error-500: #ee0000;
+  --color-error-600: #d40000;
+  --color-error-700: #b70000;
+  --color-error-800: #900000;
+  --color-error-900: #700000;
+}
