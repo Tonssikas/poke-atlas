@@ -209,6 +209,13 @@ func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int, limit int)
 	return pokemons, nil
 }
 
+// TODO: GetPokemonDetailed [name,id,height,weight,abilities,moves,evolution chain,games?]
+
+// TODO: Evolution chains
+
+// TODO: Effect entries for moves?
+// Ability descriptions?
+
 func (s *sqliteDatabase) InitDB() error {
 	query := `
 	PRAGMA foreign_keys = ON;
