@@ -172,14 +172,6 @@ func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int, limit int)
 	GROUP BY pokemons.id, pokemons.name, pokemons.weight, pokemons.height
 	ORDER BY id
 	`
-	// Old query
-
-	/*
-			`SELECT id, name, weight, height
-		            FROM pokemons
-					WHERE id > ? AND id <= ?
-		            ORDER BY id`
-	*/
 
 	rows, err := s.db.QueryContext(ctx, query, offset, offset+limit)
 	if err != nil {
