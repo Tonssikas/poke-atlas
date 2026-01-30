@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"poke-atlas/web-service/internal/model"
@@ -128,15 +129,24 @@ func (s *sqliteDatabase) AddPokemon(ctx context.Context, pokemon model.Pokemon) 
 // TODO: More queries based on frontend needs
 // Return a brief summary of pokemon for now
 func (s *sqliteDatabase) GetPokemon(ctx context.Context, name string) (model.Pokemon_summary, error) {
-	query := `SELECT id, name, weight, height FROM pokemons WHERE name = ? `
+	query := `
+	SELECT pokemons.id, pokemons.name, pokemons.weight, pokemons.height, json_group_array(pokemon_types.type_name) FROM pokemons
+	JOIN pokemon_types ON pokemon_types.pokemon_id = pokemons.id
+	WHERE pokemons.name = ?
+	GROUP BY pokemons.id, pokemons.name, pokemons.weight, pokemons.height
+	`
 
 	var pokemon model.Pokemon_summary
+
+	// Temporary variable to store types in for unmarshaling
+	var typesJSON []byte
 
 	err := s.db.QueryRowContext(ctx, query, name).Scan(
 		&pokemon.ID,
 		&pokemon.Name,
 		&pokemon.Weight,
 		&pokemon.Height,
+		&typesJSON,
 	)
 
 	if err == sql.ErrNoRows {
@@ -146,15 +156,30 @@ func (s *sqliteDatabase) GetPokemon(ctx context.Context, name string) (model.Pok
 		return model.Pokemon_summary{}, err
 	}
 
+	if err := json.Unmarshal(typesJSON, &pokemon.Types); err != nil {
+		return model.Pokemon_summary{}, err
+	}
+
 	return pokemon, nil
 }
 
-func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int) ([]model.Pokemon_summary, error) {
-	limit := 20
-	query := `SELECT id, name, weight, height
-            FROM pokemons
-			WHERE id > ? AND id <= ?
-            ORDER BY id`
+func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int, limit int) ([]model.Pokemon_summary, error) {
+	query := `
+	SELECT pokemons.id, pokemons.name, pokemons.weight, pokemons.height, json_group_array(pokemon_types.type_name) as types
+	FROM pokemons
+	JOIN pokemon_types ON pokemon_types.pokemon_id = pokemons.id 
+	WHERE id > ? AND id <= ?
+	GROUP BY pokemons.id, pokemons.name, pokemons.weight, pokemons.height
+	ORDER BY id
+	`
+	// Old query
+
+	/*
+			`SELECT id, name, weight, height
+		            FROM pokemons
+					WHERE id > ? AND id <= ?
+		            ORDER BY id`
+	*/
 
 	rows, err := s.db.QueryContext(ctx, query, offset, offset+limit)
 	if err != nil {
@@ -163,11 +188,14 @@ func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int) ([]model.P
 	defer rows.Close()
 
 	var pokemons []model.Pokemon_summary
+	var typesJSON []byte
+
+	// Increment expected ID by 1 for each iteration
 	expectedID := offset + 1
 
 	for rows.Next() {
 		var pokemon model.Pokemon_summary
-		err := rows.Scan(&pokemon.ID, &pokemon.Name, &pokemon.Weight, &pokemon.Height)
+		err := rows.Scan(&pokemon.ID, &pokemon.Name, &pokemon.Weight, &pokemon.Height, &typesJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +205,7 @@ func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int) ([]model.P
 			// Gap detected - return empty to trigger API fetch
 			return []model.Pokemon_summary{}, nil
 		}
-
+		json.Unmarshal(typesJSON, &pokemon.Types)
 		pokemons = append(pokemons, pokemon)
 		expectedID++
 	}

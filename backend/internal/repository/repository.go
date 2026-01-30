@@ -6,12 +6,11 @@ import (
 	"poke-atlas/web-service/internal/model"
 	"poke-atlas/web-service/internal/pokeapi"
 	"poke-atlas/web-service/internal/store"
-	"sort"
 )
 
 type Repository interface {
 	GetPokemon(ctx context.Context, name string) (model.Pokemon_summary, error)
-	GetPokemons(ctx context.Context, offset int) ([]model.Pokemon_summary, error)
+	GetPokemons(ctx context.Context, offset int, limit int) ([]model.Pokemon_summary, error)
 }
 
 type repository struct {
@@ -62,10 +61,10 @@ func (r *repository) GetPokemon(ctx context.Context, name string) (model.Pokemon
 	return pokemon, nil
 }
 
-func (r *repository) GetPokemons(ctx context.Context, offset int) ([]model.Pokemon_summary, error) {
+func (r *repository) GetPokemons(ctx context.Context, offset int, limit int) ([]model.Pokemon_summary, error) {
 
 	// Check database first
-	pokemons, err := r.database.GetPokemons(ctx, offset)
+	pokemons, err := r.database.GetPokemons(ctx, offset, limit)
 	if (err == nil) && (len(pokemons) > 0) {
 		log.Println("Pokemons found in database")
 		return pokemons, nil
@@ -73,7 +72,7 @@ func (r *repository) GetPokemons(ctx context.Context, offset int) ([]model.Pokem
 
 	// Fetch from pokeapi
 	log.Println("Fetching from api...")
-	response, err := r.pokeAPIClient.GetPokemons(ctx, offset)
+	response, err := r.pokeAPIClient.GetPokemons(ctx, offset, limit)
 	if err != nil {
 		log.Println("Failed to fetch pokemons from api", err.Error())
 		return nil, err
@@ -87,19 +86,27 @@ func (r *repository) GetPokemons(ctx context.Context, offset int) ([]model.Pokem
 		}
 	}
 
-	pokemons = make([]model.Pokemon_summary, len(response))
-	for i, p := range response {
-		pokemons[i] = model.Pokemon_summary{
-			ID:     p.ID,
-			Name:   p.Name,
-			Weight: p.Weight,
-			Height: p.Height,
-		}
+	// Fetch from database again after insert
+	pokemons, err = r.database.GetPokemons(ctx, offset, limit)
+	if (err == nil) && (len(pokemons) > 0) {
+		log.Println("Pokemons found in database")
+		return pokemons, nil
 	}
-	// Sort pokemons fetched from API by ID
-	sort.Slice(pokemons, func(i int, j int) bool {
-		return pokemons[i].ID < pokemons[j].ID
-	})
+
+	/*
+		pokemons = make([]model.Pokemon_summary, len(response))
+		for i, p := range response {
+			pokemons[i] = model.Pokemon_summary{
+				ID:     p.ID,
+				Name:   p.Name,
+				Weight: p.Weight,
+				Height: p.Height,
+			}
+		}
+		// Sort pokemons fetched from API by ID
+		sort.Slice(pokemons, func(i int, j int) bool {
+			return pokemons[i].ID < pokemons[j].ID
+		})*/
 
 	return pokemons, nil
 }

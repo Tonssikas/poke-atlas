@@ -12,7 +12,7 @@ import (
 
 type PokeAPIClient interface {
 	GetPokemon(ctx context.Context, name string) (model.Pokemon, error)
-	GetPokemons(ctx context.Context, offset int) ([]model.Pokemon, error)
+	GetPokemons(ctx context.Context, offset int, limit int) ([]model.Pokemon, error)
 }
 
 type pokeAPIClient struct {
@@ -65,8 +65,7 @@ func (c *pokeAPIClient) GetPokemon(ctx context.Context, name string) (model.Poke
 	return pokemon, err
 }
 
-func (c *pokeAPIClient) GetPokemons(ctx context.Context, offset int) ([]model.Pokemon, error) {
-	limit := 20
+func (c *pokeAPIClient) GetPokemons(ctx context.Context, offset int, limit int) ([]model.Pokemon, error) {
 	// Fetch list of pokemon names by id
 	listURL := fmt.Sprintf(
 		"https://pokeapi.co/api/v2/pokemon?offset=%d&limit=%d", offset, limit,
