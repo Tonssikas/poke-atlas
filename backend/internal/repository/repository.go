@@ -11,6 +11,7 @@ import (
 type Repository interface {
 	GetPokemon(ctx context.Context, name string) (model.Pokemon_summary, error)
 	GetPokemons(ctx context.Context, offset int, limit int) ([]model.Pokemon_summary, error)
+	GetPokemonDetailed(ctx context.Context, id int) (model.Pokemon_details, error)
 }
 
 type repository struct {
@@ -109,4 +110,96 @@ func (r *repository) GetPokemons(ctx context.Context, offset int, limit int) ([]
 		})*/
 
 	return pokemons, nil
+}
+
+func (r *repository) GetPokemonDetailed(ctx context.Context, id int) (model.Pokemon_details, error) {
+
+	// When this endpoint is called, the frontend should already have basic information of the pokemon so no need to check for that
+
+	// Database
+	pokemon, err := r.database.GetPokemonDetailed(ctx, id)
+
+	if err != nil {
+		return model.Pokemon_details{}, err
+	}
+
+	// Check if we need to fetch evolution chain
+	// We need it if we don't have ANY evolution data for this pokemon
+	needsEvolutionChain := len(pokemon.EvolutionChain) == 0
+
+	if needsEvolutionChain {
+		log.Println("fetching evolution chain from pokeapi...")
+		evoChain, err := r.pokeAPIClient.GetEvolutionChain(ctx, id)
+
+		if err != nil {
+			// If evolution chain fetch fails, return pokemon without it
+			// rather than failing the entire request
+			log.Printf("Failed to fetch evolution chain for pokemon %d: %v", id, err)
+			return pokemon, nil
+		}
+
+		// Add evolution chain data to db
+		err = r.database.AddEvolutionChain(ctx, evoChain)
+
+		if err != nil {
+			// Fail here most likely indicates that not all pokemon data exists in the database --> FOREIGN KEY contraint failed
+
+			log.Printf("Failed to add evolution chain to db: %v", err)
+
+			// In case of error try fetching possible missing pokemons
+			log.Printf("Attempting to fetch missing pokemons...")
+
+			missing := extractNamessFromEvolutionChain(evoChain)
+
+			for _, name := range missing {
+				// Fetch missing pokemons
+				fetchedPokemon, err := r.pokeAPIClient.GetPokemon(ctx, name)
+				if err != nil {
+					log.Printf("Failed to fetch missing pokemons: %v", err)
+					break
+				}
+				// Add missing pokemons to db
+				err = r.database.AddPokemon(ctx, fetchedPokemon)
+				if err != nil {
+					log.Printf("Failed to add pokemon to database: %v", err)
+				}
+			}
+
+			// Retry adding evolution chain to db
+			log.Print("Retrying adding evolution chain to db...")
+			err = r.database.AddEvolutionChain(ctx, evoChain)
+			if err != nil {
+				log.Printf("Failed to add evolution chain to db: %v", err)
+			}
+		}
+
+		// Fetch again to get the evolution data
+		pokemon, err = r.database.GetPokemonDetailed(ctx, id)
+
+		if err != nil {
+			return model.Pokemon_details{}, err
+		}
+	}
+
+	return pokemon, nil
+}
+
+func extractNamessFromEvolutionChain(chain model.Evolution_chain) []string {
+	ids := make(map[string]bool)
+
+	var traverse func(link model.ChainLink)
+	traverse = func(link model.ChainLink) {
+		ids[link.Species.Name] = true
+		for _, evo := range link.EvolvesTo {
+			traverse(evo)
+		}
+	}
+
+	traverse(chain.Chain)
+
+	result := make([]string, 0, len(ids))
+	for id := range ids {
+		result = append(result, id)
+	}
+	return result
 }

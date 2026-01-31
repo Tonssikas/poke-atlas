@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"poke-atlas/web-service/internal/model"
+	"strconv"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -130,7 +132,8 @@ func (s *sqliteDatabase) AddPokemon(ctx context.Context, pokemon model.Pokemon) 
 // Return a brief summary of pokemon for now
 func (s *sqliteDatabase) GetPokemon(ctx context.Context, name string) (model.Pokemon_summary, error) {
 	query := `
-	SELECT pokemons.id, pokemons.name, pokemons.weight, pokemons.height, json_group_array(pokemon_types.type_name) FROM pokemons
+	SELECT pokemons.id, pokemons.name, pokemons.weight, pokemons.height, json_group_array(pokemon_types.type_name)
+	FROM pokemons
 	JOIN pokemon_types ON pokemon_types.pokemon_id = pokemons.id
 	WHERE pokemons.name = ?
 	GROUP BY pokemons.id, pokemons.name, pokemons.weight, pokemons.height
@@ -210,8 +213,169 @@ func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int, limit int)
 }
 
 // TODO: GetPokemonDetailed [name,id,height,weight,abilities,moves,evolution chain,games?]
+func (s *sqliteDatabase) GetPokemonDetailed(ctx context.Context, id int) (model.Pokemon_details, error) {
+	query := `
+		WITH RECURSIVE full_chain AS (
+            -- Start from the queried pokemon and go backwards to find the root
+            SELECT pokemon_id, evolves_to_id, min_level, trigger_name, 0 as depth
+            FROM evolution_chains
+            WHERE evolves_to_id = pokemons.id
+            
+            UNION ALL
+            
+            -- Keep going backwards
+            SELECT ec.pokemon_id, ec.evolves_to_id, ec.min_level, ec.trigger_name, fc.depth - 1
+            FROM evolution_chains ec
+            INNER JOIN full_chain fc ON ec.evolves_to_id = fc.pokemon_id
+        ),
+        root_pokemon AS (
+            -- Find the root (pokemon with no prior evolution)
+            SELECT COALESCE(
+                (SELECT pokemon_id FROM full_chain ORDER BY depth LIMIT 1),
+                pokemons.id
+            ) as root_id
+        ),
+        complete_chain AS (
+            -- Now traverse forward from the root to get all evolutions
+            SELECT ec.pokemon_id, ec.evolves_to_id, ec.min_level, ec.trigger_name
+            FROM evolution_chains ec, root_pokemon rp
+            WHERE ec.pokemon_id = rp.root_id
+            
+            UNION ALL
+            
+            -- Recursively get all forward evolutions
+            SELECT ec.pokemon_id, ec.evolves_to_id, ec.min_level, ec.trigger_name
+            FROM evolution_chains ec
+            INNER JOIN complete_chain cc ON ec.pokemon_id = cc.evolves_to_id
+        )
+        SELECT 
+        pokemons.id, 
+        pokemons.name, 
+        pokemons.height, 
+        pokemons.weight, 
+        (
+            SELECT json_group_array(
+                json_object(
+                    'stat_name', pokemon_stats.stat_name,
+                    'effort', pokemon_stats.effort,
+                    'base_stat', pokemon_stats.base_stat
+                )
+            )
+            FROM pokemon_stats
+            WHERE pokemon_stats.pokemon_id = pokemons.id
+        ) as stats,
+        (
+            SELECT json_group_array(pokemon_types.type_name)
+            FROM pokemon_types
+            WHERE pokemon_types.pokemon_id = pokemons.id
+            ORDER BY pokemon_types.slot
+        ) as types,
+        (
+            SELECT json_group_array(
+                json_object(
+                    'pokemon_id', cc.pokemon_id,
+                    'pokemon_name', p1.name,
+                    'evolves_to_id', cc.evolves_to_id,
+                    'evolves_to_name', p2.name,
+                    'min_level', COALESCE(cc.min_level, 0),
+                    'trigger_name', cc.trigger_name
+                )
+            )
+            FROM complete_chain cc
+            JOIN pokemons p1 ON cc.pokemon_id = p1.id
+            JOIN pokemons p2 ON cc.evolves_to_id = p2.id
+        ) as evolution_chain
+        FROM pokemons
+        WHERE pokemons.id = ?
+	`
+
+	var pokemon model.Pokemon_details
+	var statsJSON, typesJSON, evolutionJSON []byte
+
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
+		&pokemon.ID,
+		&pokemon.Name,
+		&pokemon.Height,
+		&pokemon.Weight,
+		&statsJSON,
+		&typesJSON,
+		&evolutionJSON,
+	)
+	if err == sql.ErrNoRows {
+		return model.Pokemon_details{}, fmt.Errorf("pokemon not found")
+	}
+	if err != nil {
+		return model.Pokemon_details{}, err
+	}
+
+	json.Unmarshal(statsJSON, &pokemon.Stats)
+	json.Unmarshal(typesJSON, &pokemon.Types)
+	json.Unmarshal(evolutionJSON, &pokemon.EvolutionChain)
+
+	return pokemon, nil
+}
 
 // TODO: Evolution chains
+
+func (s *sqliteDatabase) AddEvolutionChain(ctx context.Context, chain model.Evolution_chain) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `
+	INSERT OR IGNORE INTO evolution_chains (pokemon_id, evolves_to_id, min_level, trigger_name) VALUES (?, ?, ?, ?)
+	`
+
+	stmtChain, err := tx.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmtChain.Close()
+
+	// Recursive function to process chain links
+	var processChainLink func(link model.ChainLink) error
+	processChainLink = func(link model.ChainLink) error {
+		// Get pokemon ID from species URL (extract ID from URL like ".../pokemon-species/21/")
+		fromID := extractIDFromURL(link.Species.URL)
+
+		// Process each evolution
+		for _, evolvesTo := range link.EvolvesTo {
+			toID := extractIDFromURL(evolvesTo.Species.URL)
+
+			// Get evolution details (use first one if multiple exist)
+			var minLevel *int
+			var triggerName string
+
+			if len(evolvesTo.EvolutionDetails) > 0 {
+				detail := evolvesTo.EvolutionDetails[0]
+				minLevel = detail.MinLevel
+				triggerName = detail.Trigger.Name
+			}
+
+			// Insert evolution link
+			_, err := stmtChain.ExecContext(ctx, fromID, toID, minLevel, triggerName)
+			if err != nil {
+				return err
+			}
+
+			// Recursively process next evolution stage
+			if err := processChainLink(evolvesTo); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	// Start processing from the root of the chain
+	if err := processChainLink(chain.Chain); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
 
 // TODO: Effect entries for moves?
 // Ability descriptions?
@@ -295,6 +459,17 @@ func (s *sqliteDatabase) InitDB() error {
 	FOREIGN KEY (version_group) REFERENCES version_groups(version_name),
 	FOREIGN KEY (move_learn_method) REFERENCES move_learn_methods(learn_method)
 	);
+
+	CREATE TABLE IF NOT EXISTS evolution_chains (
+	pokemon_id INTEGER NOT NULL,
+	evolves_to_id INTEGER NOT NULL,
+	min_level INTEGER,
+	trigger_name TEXT,
+
+	PRIMARY KEY (pokemon_id, evolves_to_id),
+	FOREIGN KEY (pokemon_id) REFERENCES pokemons(id),
+	FOREIGN KEY (evolves_to_id) REFERENCES pokemons(id)
+	);
 	`
 
 	_, err := s.db.Exec(query)
@@ -304,4 +479,11 @@ func (s *sqliteDatabase) InitDB() error {
 
 func (s *sqliteDatabase) Close() error {
 	return s.db.Close()
+}
+
+// Helper function for extracting pokemon ID from pokeapi url
+func extractIDFromURL(url string) int {
+	parts := strings.Split(strings.TrimSuffix(url, "/"), "/")
+	id, _ := strconv.Atoi(parts[len(parts)-1])
+	return id
 }
