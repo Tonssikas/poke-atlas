@@ -168,7 +168,7 @@ func (s *sqliteDatabase) GetPokemon(ctx context.Context, name string) (model.Pok
 
 func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int, limit int) ([]model.Pokemon_summary, error) {
 	query := `
-	SELECT pokemons.id, pokemons.name, pokemons.weight, pokemons.height, json_group_array(pokemon_types.type_name) as types
+	SELECT pokemons.id, pokemons.name, pokemons.weight, pokemons.height, pokemons.sprite_url, json_group_array(pokemon_types.type_name) as types
 	FROM pokemons
 	JOIN pokemon_types ON pokemon_types.pokemon_id = pokemons.id 
 	WHERE id > ? AND id <= ?

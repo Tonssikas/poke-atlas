@@ -86,6 +86,7 @@ func (r *repository) GetPokemons(ctx context.Context, offset int, limit int) ([]
 	}
 
 	for _, pokemon := range response {
+		//log.Printf("Adding pokemon %s to database", pokemon.Name)
 		err = r.database.AddPokemon(ctx, pokemon)
 		if err != nil {
 			log.Println("Failed to insert pokemon to db", err.Error())
