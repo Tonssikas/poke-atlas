@@ -2,10 +2,13 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"log"
 	"poke-atlas/web-service/internal/model"
 	"poke-atlas/web-service/internal/pokeapi"
 	"poke-atlas/web-service/internal/store"
+	"strconv"
 )
 
 type Repository interface {
@@ -37,6 +40,8 @@ func (r *repository) GetPokemon(ctx context.Context, name string) (model.Pokemon
 		return pokemon, nil
 	}
 
+	log.Print(pokemon)
+
 	log.Println("Fetching from api...")
 	response, err := r.pokeAPIClient.GetPokemon(ctx, name)
 	if err != nil {
@@ -53,10 +58,11 @@ func (r *repository) GetPokemon(ctx context.Context, name string) (model.Pokemon
 	}
 
 	pokemon = model.Pokemon_summary{
-		ID:     response.ID,
-		Name:   response.Name,
-		Weight: response.Weight,
-		Height: response.Height,
+		ID:        response.ID,
+		Name:      response.Name,
+		Weight:    response.Weight,
+		Height:    response.Height,
+		SpriteUrl: response.Sprites.FrontDefault,
 	}
 
 	return pokemon, nil
@@ -113,14 +119,28 @@ func (r *repository) GetPokemons(ctx context.Context, offset int, limit int) ([]
 }
 
 func (r *repository) GetPokemonDetailed(ctx context.Context, id int) (model.Pokemon_details, error) {
-
-	// When this endpoint is called, the frontend should already have basic information of the pokemon so no need to check for that
-
 	// Database
 	pokemon, err := r.database.GetPokemonDetailed(ctx, id)
 
-	if err != nil {
-		return model.Pokemon_details{}, err
+	log.Printf("GetPokemonDetailed err: %v, type: %T", err, err)
+	log.Printf("Is sql.ErrNoRows? %v", errors.Is(err, sql.ErrNoRows))
+
+	if errors.Is(err, sql.ErrNoRows) {
+		log.Print("pokemon not found in the database!")
+
+		// We can convert to string because pokeAPI supports querying both name and id
+		fetchedPokemon, err := r.pokeAPIClient.GetPokemon(ctx, strconv.Itoa(id))
+		if err != nil {
+			return model.Pokemon_details{}, err
+		}
+
+		err = r.database.AddPokemon(ctx, fetchedPokemon)
+		if err != nil {
+			return model.Pokemon_details{}, err
+		}
+
+		// Fetch the detailed view from database after adding
+		pokemon, err = r.database.GetPokemonDetailed(ctx, id)
 	}
 
 	// Check if we need to fetch evolution chain
