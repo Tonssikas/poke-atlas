@@ -5,6 +5,7 @@ type Pokemon_details struct {
 	Name           string            `json:"name"`
 	Weight         int               `json:"weight"`
 	Height         int               `json:"height"`
+	SpriteUrl      string            `json:"sprite_url"`
 	Types          []string          `json:"types"`
 	Stats          []pokemon_stat    `json:"stats"`
 	EvolutionChain []evolution_chain `json:"evolution_chain"`

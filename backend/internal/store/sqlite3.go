@@ -39,10 +39,10 @@ func (s *sqliteDatabase) AddPokemon(ctx context.Context, pokemon model.Pokemon) 
 	}
 	defer tx.Rollback()
 
-	// pokemon
-	query := `INSERT OR IGNORE INTO pokemons (id, name, height, weight) VALUES (?, ?, ?, ?)`
+	// basic pokemon information and sprite
+	query := `INSERT OR IGNORE INTO pokemons (id, name, height, weight, sprite_url) VALUES (?, ?, ?, ?, ?)`
 
-	_, err = tx.ExecContext(ctx, query, pokemon.ID, pokemon.Name, pokemon.Height, pokemon.Weight)
+	_, err = tx.ExecContext(ctx, query, pokemon.ID, pokemon.Name, pokemon.Height, pokemon.Weight, pokemon.Sprites.FrontDefault)
 	if err != nil {
 		return err
 	}
@@ -128,11 +128,10 @@ func (s *sqliteDatabase) AddPokemon(ctx context.Context, pokemon model.Pokemon) 
 	return tx.Commit()
 }
 
-// TODO: More queries based on frontend needs
 // Return a brief summary of pokemon for now
 func (s *sqliteDatabase) GetPokemon(ctx context.Context, name string) (model.Pokemon_summary, error) {
 	query := `
-	SELECT pokemons.id, pokemons.name, pokemons.weight, pokemons.height, json_group_array(pokemon_types.type_name)
+	SELECT pokemons.id, pokemons.name, pokemons.weight, pokemons.height, pokemons.sprite_url, json_group_array(pokemon_types.type_name)
 	FROM pokemons
 	JOIN pokemon_types ON pokemon_types.pokemon_id = pokemons.id
 	WHERE pokemons.name = ?
@@ -149,6 +148,7 @@ func (s *sqliteDatabase) GetPokemon(ctx context.Context, name string) (model.Pok
 		&pokemon.Name,
 		&pokemon.Weight,
 		&pokemon.Height,
+		&pokemon.SpriteUrl,
 		&typesJSON,
 	)
 
@@ -190,7 +190,7 @@ func (s *sqliteDatabase) GetPokemons(ctx context.Context, offset int, limit int)
 
 	for rows.Next() {
 		var pokemon model.Pokemon_summary
-		err := rows.Scan(&pokemon.ID, &pokemon.Name, &pokemon.Weight, &pokemon.Height, &typesJSON)
+		err := rows.Scan(&pokemon.ID, &pokemon.Name, &pokemon.Weight, &pokemon.Height, &pokemon.SpriteUrl, &typesJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +219,7 @@ func (s *sqliteDatabase) GetPokemonDetailed(ctx context.Context, id int) (model.
             -- Start from the queried pokemon and go backwards to find the root
             SELECT pokemon_id, evolves_to_id, min_level, trigger_name, 0 as depth
             FROM evolution_chains
-            WHERE evolves_to_id = pokemons.id
+            WHERE evolves_to_id = ?
             
             UNION ALL
             
@@ -232,7 +232,7 @@ func (s *sqliteDatabase) GetPokemonDetailed(ctx context.Context, id int) (model.
             -- Find the root (pokemon with no prior evolution)
             SELECT COALESCE(
                 (SELECT pokemon_id FROM full_chain ORDER BY depth LIMIT 1),
-                pokemons.id
+                ?
             ) as root_id
         ),
         complete_chain AS (
@@ -249,10 +249,11 @@ func (s *sqliteDatabase) GetPokemonDetailed(ctx context.Context, id int) (model.
             INNER JOIN complete_chain cc ON ec.pokemon_id = cc.evolves_to_id
         )
         SELECT 
-        pokemons.id, 
-        pokemons.name, 
-        pokemons.height, 
-        pokemons.weight, 
+        pokemons.id,
+        pokemons.name,
+        pokemons.height,
+        pokemons.weight,
+		pokemons.sprite_url,
         (
             SELECT json_group_array(
                 json_object(
@@ -292,17 +293,18 @@ func (s *sqliteDatabase) GetPokemonDetailed(ctx context.Context, id int) (model.
 	var pokemon model.Pokemon_details
 	var statsJSON, typesJSON, evolutionJSON []byte
 
-	err := s.db.QueryRowContext(ctx, query, id).Scan(
+	err := s.db.QueryRowContext(ctx, query, id, id, id).Scan(
 		&pokemon.ID,
 		&pokemon.Name,
 		&pokemon.Height,
 		&pokemon.Weight,
+		&pokemon.SpriteUrl,
 		&statsJSON,
 		&typesJSON,
 		&evolutionJSON,
 	)
 	if err == sql.ErrNoRows {
-		return model.Pokemon_details{}, fmt.Errorf("pokemon not found")
+		return model.Pokemon_details{}, sql.ErrNoRows
 	}
 	if err != nil {
 		return model.Pokemon_details{}, err
@@ -387,7 +389,8 @@ func (s *sqliteDatabase) InitDB() error {
 	id INTEGER PRIMARY KEY,
 	name TEXT UNIQUE NOT NULL,
 	weight INTEGER,
-	height INTEGER
+	height INTEGER,
+	sprite_url
 	);
 
 	CREATE TABLE IF NOT EXISTS types (
