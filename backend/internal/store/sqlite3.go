@@ -314,6 +314,7 @@ func (s *sqliteDatabase) GetPokemonDetailed(ctx context.Context, id int) (model.
 	json.Unmarshal(typesJSON, &pokemon.Types)
 	json.Unmarshal(evolutionJSON, &pokemon.EvolutionChain)
 
+	//log.Println("pokemon found: ", pokemon)
 	return pokemon, nil
 }
 

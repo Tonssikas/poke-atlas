@@ -72,7 +72,8 @@ func (r *repository) GetPokemons(ctx context.Context, offset int, limit int) ([]
 
 	// Check database first
 	pokemons, err := r.database.GetPokemons(ctx, offset, limit)
-	if (err == nil) && (len(pokemons) > 0) {
+	if (err == nil) && (len(pokemons) == limit) {
+		log.Print(len(pokemons))
 		log.Println("Pokemons found in database")
 		return pokemons, nil
 	}
@@ -123,8 +124,8 @@ func (r *repository) GetPokemonDetailed(ctx context.Context, id int) (model.Poke
 	// Database
 	pokemon, err := r.database.GetPokemonDetailed(ctx, id)
 
-	log.Printf("GetPokemonDetailed err: %v, type: %T", err, err)
-	log.Printf("Is sql.ErrNoRows? %v", errors.Is(err, sql.ErrNoRows))
+	//log.Printf("GetPokemonDetailed err: %v, type: %T", err, err)
+	//log.Printf("Is sql.ErrNoRows? %v", errors.Is(err, sql.ErrNoRows))
 
 	if errors.Is(err, sql.ErrNoRows) {
 		log.Print("pokemon not found in the database!")
@@ -181,6 +182,7 @@ func (r *repository) GetPokemonDetailed(ctx context.Context, id int) (model.Poke
 				}
 				// Add missing pokemons to db
 				err = r.database.AddPokemon(ctx, fetchedPokemon)
+				log.Println("adding pokemon: ", name)
 				if err != nil {
 					log.Printf("Failed to add pokemon to database: %v", err)
 				}
