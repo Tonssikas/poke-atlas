@@ -9,13 +9,13 @@ export async function load({ fetch, url, setHeaders }) {
         error(400, 'Offset must be a valid number');
         return {}
     }
-    
+
     if (parsedInt < 0) {
         error(400, 'Offset must not be negative');
         return {}
     }
 
-    const response = await fetch (`http://localhost:8080/pokemons/${offset}`);
+    const response = await fetch(`http://localhost:8080/pokemons/${offset}`);
     const pokemon: PokemonSummary[] = await response.json();
 
     if (pokemon.length === 0) {
@@ -27,7 +27,7 @@ export async function load({ fetch, url, setHeaders }) {
     })
 
     console.log(pokemon);
-    
+
     return {
         pokemon: pokemon
     }

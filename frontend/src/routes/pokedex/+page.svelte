@@ -26,16 +26,15 @@
 </script>
 
 <svelte:head>
-	<title>Poke-atlas</title>
+	<title>Pokedex-page</title>
 	<meta name="description" content="Pokedex" />
 </svelte:head>
+<h1>Pokedex</h1>
 
 <section>
-	<h1>Pokedex</h1>
-
 	<div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
 		{#each data.pokemon as pokemon}
-			<Card {pokemon} class="pokemon-card border-4 border-transparent" />
+			<Card {pokemon} class="pokemon-card border-4 border-transparent"/>
 		{/each}
 	</div>
 
