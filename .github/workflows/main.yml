@@ -92,7 +92,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          file: Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -112,19 +111,22 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-      
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install
 
       - name: Build frontend
-        run: npm run build
+        run: pnpm run build
 
       - name: Upload frontend build
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: build
+          path: ./frontend/build
 
 
   dockerize_frontend:
@@ -169,7 +171,7 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         context: ./frontend
-        file: Dockerfile
+        file: ./frontend/Dockerfile
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta_frontend.outputs.tags }}
         labels: ${{ steps.meta_frontend.outputs.labels }}
