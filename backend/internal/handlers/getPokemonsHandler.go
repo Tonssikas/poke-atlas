@@ -8,6 +8,21 @@ import (
 )
 
 func (h *Handler) GetPokemonsHandler(c *gin.Context) {
+	// Limit defaults to 20 if no parameter is given
+	limitStr := c.DefaultQuery("limit", "20")
+
+	// Limit validation
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "limit must be a valid integer"})
+		return
+	}
+	if limit <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "limit must be a greater than 0"})
+		return
+	}
+
+	// Offset validation
 	offsetStr := c.Param("offset")
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
@@ -21,8 +36,7 @@ func (h *Handler) GetPokemonsHandler(c *gin.Context) {
 		return
 	}
 
-	pokemons, err := h.repo.GetPokemons(c.Request.Context(), offset)
+	pokemons, err := h.repo.GetPokemons(c.Request.Context(), offset, limit)
 
 	c.JSON(http.StatusOK, pokemons)
-
 }

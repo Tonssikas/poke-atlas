@@ -12,7 +12,8 @@ import (
 
 type PokeAPIClient interface {
 	GetPokemon(ctx context.Context, name string) (model.Pokemon, error)
-	GetPokemons(ctx context.Context, offset int) ([]model.Pokemon, error)
+	GetPokemons(ctx context.Context, offset int, limit int) ([]model.Pokemon, error)
+	GetEvolutionChain(ctx context.Context, pokemonID int) (model.Evolution_chain, error)
 }
 
 type pokeAPIClient struct {
@@ -65,8 +66,7 @@ func (c *pokeAPIClient) GetPokemon(ctx context.Context, name string) (model.Poke
 	return pokemon, err
 }
 
-func (c *pokeAPIClient) GetPokemons(ctx context.Context, offset int) ([]model.Pokemon, error) {
-	limit := 20
+func (c *pokeAPIClient) GetPokemons(ctx context.Context, offset int, limit int) ([]model.Pokemon, error) {
 	// Fetch list of pokemon names by id
 	listURL := fmt.Sprintf(
 		"https://pokeapi.co/api/v2/pokemon?offset=%d&limit=%d", offset, limit,
@@ -164,4 +164,59 @@ func (c *pokeAPIClient) GetPokemons(ctx context.Context, offset int) ([]model.Po
 	}
 
 	return pokemons, nil
+}
+
+func (c *pokeAPIClient) GetEvolutionChain(ctx context.Context, pokemonID int) (model.Evolution_chain, error) {
+	// Step 1: Get pokemon species to find evolution chain URL
+	speciesURL := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon-species/%d", pokemonID)
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, speciesURL, nil)
+	if err != nil {
+		return model.Evolution_chain{}, fmt.Errorf("creating species request: %w", err)
+	}
+
+	response, err := c.client.Do(request)
+	if err != nil {
+		return model.Evolution_chain{}, fmt.Errorf("fetching species: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(response.Body)
+		return model.Evolution_chain{}, fmt.Errorf("species API returned status %d: %s", response.StatusCode, string(body))
+	}
+
+	var speciesData struct {
+		EvolutionChain struct {
+			URL string `json:"url"`
+		} `json:"evolution_chain"`
+	}
+
+	if err := json.NewDecoder(response.Body).Decode(&speciesData); err != nil {
+		return model.Evolution_chain{}, fmt.Errorf("decoding species data: %w", err)
+	}
+
+	// Step 2: Fetch the evolution chain using the URL
+	chainRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, speciesData.EvolutionChain.URL, nil)
+	if err != nil {
+		return model.Evolution_chain{}, fmt.Errorf("creating chain request: %w", err)
+	}
+
+	chainResponse, err := c.client.Do(chainRequest)
+	if err != nil {
+		return model.Evolution_chain{}, fmt.Errorf("fetching evolution chain: %w", err)
+	}
+	defer chainResponse.Body.Close()
+
+	if chainResponse.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(chainResponse.Body)
+		return model.Evolution_chain{}, fmt.Errorf("evolution chain API returned status %d: %s", chainResponse.StatusCode, string(body))
+	}
+
+	var chain model.Evolution_chain
+	if err := json.NewDecoder(chainResponse.Body).Decode(&chain); err != nil {
+		return model.Evolution_chain{}, fmt.Errorf("decoding evolution chain: %w", err)
+	}
+
+	return chain, nil
 }

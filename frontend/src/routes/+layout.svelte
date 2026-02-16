@@ -2,6 +2,7 @@
 	import Header from './Header.svelte';
 	import Navigation from '../lib/components/Navigation.svelte';
 	import './layout.css';
+	import { navigating } from '$app/state';
 
 	let { children } = $props();
 </script>
@@ -11,12 +12,14 @@
 
 	<div class="main-column">
 		<Header />
-	
+
+		{#if navigating.to}
+			Navigating to {navigating.to.url.pathname}
+		{/if}
+
 		<main>{@render children()}</main>
 		<footer>
-			<p>
-				Poke-atlas is work in progress
-			</p>
+			<p>Poke-atlas is work in progress</p>
 		</footer>
 	</div>
 </div>
