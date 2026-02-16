@@ -1,7 +1,7 @@
 FROM node:24-alpine
 WORKDIR /app
 
-COPY build/ ./
+COPY build ./
 
 EXPOSE 3001
 
