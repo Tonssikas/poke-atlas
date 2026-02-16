@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  test_backend:
     runs-on: self-hosted
     permissions:
       contents: read 
@@ -28,9 +28,9 @@ jobs:
       - name: Test backend
         run: go test ./...
   
-  build:
+  build_backend:
     runs-on: self-hosted
-    needs: test
+    needs: test_backend
     permissions:
       contents: read 
     defaults:
@@ -53,9 +53,9 @@ jobs:
           name: main-executable
           path: ./backend/main
 
-  dockerize:
+  dockerize_backend:
     runs-on: self-hosted
-    needs: build
+    needs: build_backend
     permissions:
       contents: read
       packages: write
@@ -92,15 +92,94 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend
+          file: Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
 
+  build_frontend:
+    runs-on: self-hosted
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: build
+
+
+  dockerize_frontend:
+    runs-on: self-hosted
+    needs: build_frontend
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.meta_frontend.outputs.version }}
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Download frontend build
+      uses: actions/download-artifact@v5
+      with:
+        name: frontend-build
+        path: ./frontend/build
+    - name: Generate metadata
+      id: meta_frontend
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository_owner }}/poke-atlas-frontend
+        tags: |
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=ref,event=branch
+          type=sha
+
+    # Login to GHCR
+    - name: Login to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.TOKEN_GITHUB }}
+
+    # Build & push Docker image
+    - name: Build and push frontend image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./frontend
+        file: Dockerfile
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta_frontend.outputs.tags }}
+        labels: ${{ steps.meta_frontend.outputs.labels }}
+
   deploy:
     runs-on: self-hosted
     environment: production
-    needs: dockerize
+    needs: 
+      - dockerize_backend
+      - dockerize_frontend
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     defaults:
       run:
@@ -119,7 +198,8 @@ jobs:
           cd ~/deploy
           echo "${{ secrets.TOKEN_GITHUB }}" | docker login ghcr.io -u ${{ github.repository_owner}} --password-stdin
           export USER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          export IMAGE_TAG=${{ needs.dockerize.outputs.tag }}
+          export BACKEND_IMAGE_TAG=${{ needs.dockerize_backend.outputs.tag }}
+          export FRONTEND_IMAGE_TAG=${{ needs.dockerize_frontend.outputs.tag }}
           docker compose pull
           docker compose up -d
           EOF
