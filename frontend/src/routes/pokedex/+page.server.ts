@@ -1,5 +1,5 @@
 import type { PokemonSummary } from '$lib/model/PokemonSummary'
-import { error, fail } from '@sveltejs/kit'
+import { error } from '@sveltejs/kit'
 
 export async function load({ fetch, url, setHeaders }) {
     const offset = url.searchParams.get('offset') || '0';
@@ -15,7 +15,7 @@ export async function load({ fetch, url, setHeaders }) {
         return {}
     }
 
-    const response = await fetch(`http://localhost:8080/pokemons/${offset}`);
+    const response = await fetch(`http://backend:8080/pokemons/${parsedInt}`);
     const pokemon: PokemonSummary[] = await response.json();
 
     if (pokemon.length === 0) {

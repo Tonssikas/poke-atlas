@@ -14,7 +14,7 @@ export async function load({ fetch, params, setHeaders }) {
         return {}
     }
 
-    const response = await fetch(`http://localhost:8080/pokemondetailed/${parsedInt}`);
+    const response = await fetch(`http://backend:8080/pokemondetailed/${parsedInt}`);
     const pokemon: PokemonDetailed = await response.json();
 
     if (pokemon == null) {
