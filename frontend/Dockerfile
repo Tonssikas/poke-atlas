@@ -1,8 +1,8 @@
 FROM node:24-alpine
 WORKDIR /app
 
-COPY build ./
+COPY build ./build
 
-EXPOSE 3001
+EXPOSE 3000
 
-CMD [ "node build" ]
+CMD [ "node", "build" ]
