@@ -28,7 +28,8 @@ func main() {
 	database := store.CreateSqliteDatabase()
 	defer database.Close()
 
-	if err := database.InitDB(); err != nil {
+	err = database.InitDB()
+	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
 	repository := repository.NewRepository(pokeAPIClient, database)

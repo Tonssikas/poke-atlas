@@ -17,7 +17,7 @@ type sqliteDatabase struct {
 	db *sql.DB
 }
 
-func CreateSqliteDatabase() Database {
+func CreateSqliteDatabase() *sqliteDatabase {
 	db, err := sql.Open("sqlite3", "./pokedb.db")
 
 	if err != nil {
