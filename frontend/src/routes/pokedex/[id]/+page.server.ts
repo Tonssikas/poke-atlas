@@ -1,6 +1,7 @@
 import type { PageServerLoad } from "./$types";
-import { error } from '@sveltejs/kit'
-import type { PokemonDetailed } from '$lib/model/PokemonDetailed.js'
+import { error } from '@sveltejs/kit';
+import type { PokemonDetailed } from '$lib/model/PokemonDetailed.js';
+import { API_ADDRESS } from '$env/static/private';
 
 export async function load({ fetch, params, setHeaders }) {
     const parsedInt = parseInt(params.id)
@@ -14,7 +15,7 @@ export async function load({ fetch, params, setHeaders }) {
         return {}
     }
 
-    const response = await fetch(`http://backend:8080/pokemondetailed/${parsedInt}`);
+    const response = await fetch(`http://${API_ADDRESS}/pokemondetailed/${parsedInt}`);
     const pokemon: PokemonDetailed = await response.json();
 
     if (pokemon == null) {

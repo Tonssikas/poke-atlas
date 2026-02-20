@@ -119,6 +119,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Replace dev .env with prod
+        run: mv .env.prod .env
+
       - name: Build frontend
         run: pnpm run build
 
