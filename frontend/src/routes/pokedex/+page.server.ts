@@ -1,6 +1,6 @@
 import type { PokemonSummary } from '$lib/model/PokemonSummary'
 import { error } from '@sveltejs/kit'
-import { API_ADDRESS } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export async function load({ fetch, url, setHeaders }) {
     const offset = url.searchParams.get('offset') || '0';
@@ -15,8 +15,8 @@ export async function load({ fetch, url, setHeaders }) {
         error(400, 'Offset must not be negative');
         return {}
     }
-
-    const response = await fetch(`http://${API_ADDRESS}/pokemons/${parsedInt}`);
+    const apiAddress = env.API_ADDRESS || 'localhost:8080';
+    const response = await fetch(`http://${apiAddress}/pokemons/${parsedInt}`);
     const pokemon: PokemonSummary[] = await response.json();
 
     if (pokemon.length === 0) {

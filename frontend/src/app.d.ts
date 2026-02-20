@@ -10,8 +10,5 @@ declare global {
 	}
 }
 
-declare module '$env/static/private' {
-	export const API_ADDRESS: string;
-}
 
 export {};

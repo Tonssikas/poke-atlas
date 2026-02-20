@@ -1,7 +1,7 @@
 import type { PageServerLoad } from "./$types";
 import { error } from '@sveltejs/kit';
 import type { PokemonDetailed } from '$lib/model/PokemonDetailed.js';
-import { API_ADDRESS } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export async function load({ fetch, params, setHeaders }) {
     const parsedInt = parseInt(params.id)
@@ -14,8 +14,8 @@ export async function load({ fetch, params, setHeaders }) {
         error(400, 'ID must not be negative');
         return {}
     }
-
-    const response = await fetch(`http://${API_ADDRESS}/pokemondetailed/${parsedInt}`);
+    const apiAddress = env.API_ADDRESS || 'localhost:8080';
+    const response = await fetch(`http://${apiAddress}/pokemondetailed/${parsedInt}`);
     const pokemon: PokemonDetailed = await response.json();
 
     if (pokemon == null) {
