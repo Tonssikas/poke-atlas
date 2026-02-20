@@ -50,7 +50,6 @@ pnpm install
 pnpm run dev
 ```
 
-**Currently frontend endpoints do not work in dev environment as-is. This will be fixed in the future by implementing dev configuration for docker containerization and / or using env files for dev and production in frontend**
 
 ##  Goals of the project
 
