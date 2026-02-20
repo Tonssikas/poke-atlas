@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Counter from './Counter.svelte';
+	
 </script>
 
 <svelte:head>
@@ -18,7 +18,6 @@
 		A pokemon encyclopedia app
 	</h2>
 
-	<Counter />
 </section>
 
 <style>
