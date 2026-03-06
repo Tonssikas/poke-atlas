@@ -1,5 +1,6 @@
 <script lang="ts">
 	import TypeIcon from '$lib/components/TypeIcon.svelte';
+	import BaseStatBar from '$lib/components/BaseStatBar.svelte';
 	import type { evolutionChain } from '$lib/model/PokemonDetailed.js';
 	import type { PageData } from './$types';
 
@@ -74,15 +75,15 @@
 <section>
 	<div class="flex w-5/6 flex-col-reverse justify-between lg:flex-row">
 		<div class="self-center">
-			<div class="rounded-md bg-surface-200 p-5 md:mb-3 lg:mb-10">
+			<div class="rounded-md bg-surface-200 text-center p-5 md:mb-3 lg:mb-10">
 				<p>Pokemon ID: {data.pokemon?.id}</p>
 				<p class="capitalize">Name: {data.pokemon?.name}</p>
 				<p>Weight: {data.pokemon?.weight}</p>
 				<p>Height: {data.pokemon?.height}</p>
 			</div>
-			<div class="md: mb-10 rounded-md bg-surface-200 p-5">
+			<div class="md: mb-10 flex flex-col gap-4 rounded-md bg-surface-200 p-5">
 				{#each data.pokemon?.stats as stat}
-					<p class="capitalize">{stat.stat_name}: {stat.base_stat}</p>
+					<BaseStatBar statName={stat.stat_name} statValue={stat.base_stat}></BaseStatBar>
 				{/each}
 			</div>
 			<div class="lg: mb-5 self-center rounded-md bg-surface-200 p-5 md:mb-10">
