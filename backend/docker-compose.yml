@@ -1,10 +1,13 @@
 services:
   backend:
-    image: ghcr.io/${USER}/poke-atlas-backend:${BACKEND_IMAGE_TAG}
-    ports: 
-      - "8080:8080"
+    image: ghcr.io/__IMAGE_OWNER__/poke-atlas-backend:__BACKEND_IMAGE_TAG__
+    restart: unless-stopped
+    expose: ["8080"]
   
   frontend:
-    image: ghcr.io/${USER}/poke-atlas-frontend:${FRONTEND_IMAGE_TAG}
+    image: ghcr.io/__IMAGE_OWNER__/poke-atlas-frontend:__FRONTEND_IMAGE_TAG__
+    restart: unless-stopped
     ports: 
-      - "80:3000"
+      - "3001:3000"
+    environment:
+      API_ADDRESS: backend:8080
