@@ -1,6 +1,7 @@
 <script lang="ts">
 	import github from '$lib/images/github.svg';
 	import pokeball from '$lib/images/pokeball.png';
+	import SearchBar from '$lib/components/SearchBar.svelte';
 </script>
 
 <header>
@@ -8,6 +9,10 @@
 		<a href="https://svelte.dev/docs/kit">
 			<img src={pokeball} alt="Pokeball" />
 		</a>
+	</div>
+
+	<div>
+		<SearchBar></SearchBar>
 	</div>
 
 	

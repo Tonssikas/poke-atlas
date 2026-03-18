@@ -193,15 +193,21 @@ jobs:
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST_ADDRESS }}
         run: |
-          mkdir deploy && cp docker-compose.yml ./deploy
-          scp -r deploy root@${DEPLOY_HOST}:~/
-          ssh root@${DEPLOY_HOST} << EOF
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          BACKEND_TAG="${{ needs.dockerize_backend.outputs.tag }}"
+          FRONTEND_TAG="${{ needs.dockerize_frontend.outputs.tag }}"
+
+          mkdir -p deploy
+          cp docker-compose.yml ./deploy/docker-compose.yml
+          sed -i "s|__IMAGE_OWNER__|${OWNER_LOWER}|g" ./deploy/docker-compose.yml
+          sed -i "s|__BACKEND_IMAGE_TAG__|${BACKEND_TAG}|g" ./deploy/docker-compose.yml
+          sed -i "s|__FRONTEND_IMAGE_TAG__|${FRONTEND_TAG}|g" ./deploy/docker-compose.yml
+
+          scp -P 60222 -r deploy poke-atlas@${DEPLOY_HOST}:~/
+          ssh -p 60222 poke-atlas@${DEPLOY_HOST} << EOF
           set -e
           cd ~/deploy
-          echo "${{ secrets.TOKEN_GITHUB }}" | docker login ghcr.io -u ${{ github.repository_owner}} --password-stdin
-          export USER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          export BACKEND_IMAGE_TAG=${{ needs.dockerize_backend.outputs.tag }}
-          export FRONTEND_IMAGE_TAG=${{ needs.dockerize_frontend.outputs.tag }}
+          echo "${{ secrets.TOKEN_GITHUB }}" | docker login ghcr.io -u ${OWNER_LOWER} --password-stdin
           docker compose pull
           docker compose up -d
           EOF
