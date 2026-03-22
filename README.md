@@ -2,6 +2,8 @@
 
 A full-stack web application for browsing and exploring Pokémon data, built with Go and Svelte.
 
+The app can be accessed [here](https://poke-atlas.tonssikas.ovh/)
+
 ---
 
 # DISCLAIMER
