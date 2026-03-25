@@ -3,6 +3,8 @@
 	import BaseStatBar from '$lib/components/BaseStatBar.svelte';
 	import type { evolutionChain } from '$lib/model/PokemonDetailed.js';
 	import type { PageData } from './$types';
+	import TypeDefenseRelations from '$lib/components/TypeDefenseRelations.svelte';
+	import type { PokemonType } from '$lib/icons/pokemon-types/index.js';
 
 	let { data } = $props();
 
@@ -73,7 +75,7 @@
 <h1 class="capitalize">{data.pokemon?.name}</h1>
 
 <section>
-	<div class="flex w-5/6 flex-col-reverse justify-between lg:flex-row">
+	<div class="flex flex-col-reverse justify-between lg:flex-row">
 		<div class="self-center">
 			<div class="rounded-md bg-surface-200 text-center p-5 md:mb-3 lg:mb-10">
 				<p>Pokemon ID: {data.pokemon?.id}</p>
@@ -106,7 +108,7 @@
 		</div>
 	</div>
 
-	<div class="w-5/6 lg:flex lg:justify-between lg:gap-x-5">
+	<div class="lg:flex lg:justify-between lg:gap-x-5">
 		<div class="justify-items-center rounded-md bg-surface-200 p-5 lg:flex-1">
 			<h4 class="mb-4">Evolution chain</h4>
 			<div class="flex justify-center">
@@ -116,8 +118,9 @@
 			</div>
 		</div>
 
-		<div class="mt-10 justify-items-center rounded-md bg-surface-200 p-5 lg:mt-0 lg:flex-1">
-			<h4>Weaknesses and strengths</h4>
+		<div class="mt-10 flex flex-col items-center rounded-md bg-surface-200 p-5 lg:mt-0">
+			<h4 class="mb-4 text-center lg:mb-8">Type effectiveness (Defense)</h4>
+			<TypeDefenseRelations types={data.pokemon?.types as PokemonType[]}></TypeDefenseRelations>
 		</div>
 	</div>
 </section>
